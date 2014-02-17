@@ -626,6 +626,44 @@ sub new
 	return $self;
 }
 
+=item C<derive_link_state([state])>
+
+Overrides routine in BaseInsteon. Takes the various states available to insteon 
+devices and returns a derived state of on, off, or 0%-100%.
+
+The SwitchLincRelay supports the off_fast and on_fast in addition to off & on.
+It's not meaningful for the Relay, but can also be used to implement scene
+changes on the double-tap.
+
+=cut
+
+sub derive_link_state
+{
+	my ($self, $p_state) = @_;
+	$p_state = $self if !(ref $self); #Old code made direct calls
+	#Convert Relative State to Absolute State
+	if ($p_state =~ /^([+-])(\d+)/) {
+		my $rel_state = $1 . $2;
+		my $curr_state = '100';
+		$curr_state = '0' if ($self->state eq 'off');
+		$curr_state = $1 if $self->state =~ /(\d{1,3})/;
+		$p_state = $curr_state + $rel_state;
+		$p_state = 'on' if ($p_state > 0);
+		$p_state = 'off' if ($p_state <= 0);
+	}
+	
+	my $link_state = 'on';
+	if (grep(/$p_state/i, @{['on_fast', 'off', 'off_fast']})) {
+		$link_state = $p_state;
+	}
+	elsif ($p_state =~ /\d+%?/)
+	{
+		my ($dim_state) = $p_state =~ /(\d+)%?/;
+		$link_state = 'off' if $dim_state == 0;
+	}
+
+	return $link_state;
+}
 
 =item C<link_data3>
 
