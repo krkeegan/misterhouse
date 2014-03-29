@@ -63,7 +63,6 @@ package Insteon::Irrigation;
 
 our %message_types = (
 	%Insteon::BaseDevice::message_types,
-	sprinkler_status => 0x27,
 	sprinkler_control => 0x44,
 	sprinkler_valve_on => 0x40,
 	sprinkler_valve_off => 0x41,
@@ -246,6 +245,40 @@ sub get_timers() {
    return;
 }
 
+=item C<set_timers(program, valve1, valve2, valve3, valve4, valve5, valve6, 
+    valve7, valve8)>
+
+Sets the timers for the program.  Program 0 is the manual/default timers that
+are used if you just turn on a single timer.  It is HIGHLY recommented that you
+set the manual/default timer to the most number of minutes that you would ever
+need for that zone.  This will prevent accidental overwatering or flooding
+should something happen to MisterHouse.
+
+Each valve time is specified in minutes with 255 being the maximum.
+
+By default, each valve is set to 30 minutes for each program.
+
+=cut
+
+sub set_timers() {
+   my ($self, $program, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8) = @_;
+   #Command is reused in different format for EXT msgs
+   my $cmd = 'sprinkler_valve_on';
+   my $extra = sprintf("%02X", $program);
+   $extra .= sprintf("%02X", $v1);
+   $extra .= sprintf("%02X", $v2);
+   $extra .= sprintf("%02X", $v3);
+   $extra .= sprintf("%02X", $v4);
+   $extra .= sprintf("%02X", $v5);
+   $extra .= sprintf("%02X", $v6);
+   $extra .= sprintf("%02X", $v7);
+   $extra .= sprintf("%02X", $v8);
+   $extra .= '0' x (30 - length $extra);
+   my $message = new Insteon::InsteonMessage('insteon_ext_send', $self, $cmd, $extra);
+   $self->_send_cmd($message);
+   return;
+}
+
 =item C<_is_info_request()>
 
 Used to intercept and handle unique EZFlora messages, all others are passed on
@@ -260,8 +293,7 @@ sub _is_info_request {
         or $cmd eq 'sprinkler_valve_on'
         or $cmd eq 'sprinkler_valve_off'
         or $cmd eq 'sprinkler_program_on'
-        or $cmd eq 'sprinkler_program_off',
-        or $cmd eq 'sprinkler_status') {
+        or $cmd eq 'sprinkler_program_off') {
       $is_info_request = 1;
       my $val = hex($msg{extra});
       &::print_log("[Insteon::Irrigation] Processing data for $cmd with value: $val") if $self->debuglevel(1, 'insteon');
@@ -345,30 +377,6 @@ sub enable_pump {
    }
    else {
        ::print_log("[Insteon::Irrigation] Setting valve 8 to act as regular valve.");
-   }
-   my $message = new Insteon::InsteonMessage('insteon_send', $self, 'sprinkler_control', $subcmd);
-   $self->_send_cmd($message);
-   return;
-}
-
-=item C<enable_status(boolean)>
-
-If set to true, this will cause the device to send a status message whenever
-a valve changes status during a program.  If not set, MH will not be informed
-of the status of each of the valves during a program.  It is HIGHLY recommended 
-that you enable this feature.
-
-=cut
-
-sub enable_status {
-   my ($self, $enable) = @_;
-   my $subcmd = '0A';
-   if ($enable){
-       $subcmd = '09';
-       ::print_log("[Insteon::Irrigation] Enabling valve status messages.");
-   }
-   else {
-       ::print_log("[Insteon::Irrigation] Disabling valve status messages.");
    }
    my $message = new Insteon::InsteonMessage('insteon_send', $self, 'sprinkler_control', $subcmd);
    $self->_send_cmd($message);
