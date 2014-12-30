@@ -54,7 +54,7 @@ package Insteon::RemoteLinc;
 use strict;
 use Insteon::BaseInsteon;
 
-@Insteon::RemoteLinc::ISA = ('Insteon::BaseDevice', 'Insteon::MultigroupDevice');
+@Insteon::RemoteLinc::ISA = ('Insteon::BaseDevice', 'Insteon::MultigroupDevice', 'Insteon::DimmableLight');
 
 my %message_types = (
 	%Insteon::BaseDevice::message_types,
